@@ -76,7 +76,7 @@ async function handleWebhookRequest(req: Request, res: Response): Promise<void> 
     res.status(200).json({ status: true, message: 'Processed', reply: replyText });
   } catch (error: any) {
     console.error('[WEBHOOK ERROR]', error);
-    res.status(500).json({ status: false, error: 'Internal Server Error' });
+    res.status(500).json({ status: false, error: error.message || 'Internal Server Error' });
   }
 }
 
