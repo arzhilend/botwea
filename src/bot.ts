@@ -15,7 +15,10 @@ export function normalizePhoneNumber(phone: string): string {
 }
 
 export function isNumberAllowed(sender: string): boolean {
-  if (!config.allowedWaNumber) return true; // If empty, allow for dev
+  // If ALLOWED_WA_NUMBER is not set, empty, or set to 'all'/'*', allow anyone to use the bot!
+  if (!config.allowedWaNumber || config.allowedWaNumber === '*' || config.allowedWaNumber.toLowerCase() === 'all') {
+    return true;
+  }
   const normalizedSender = normalizePhoneNumber(sender);
   const normalizedAllowed = normalizePhoneNumber(config.allowedWaNumber);
   return normalizedSender === normalizedAllowed;
@@ -56,7 +59,7 @@ export async function processIncomingMessage(sender: string, text: string): Prom
   const trimmedText = text.trim();
   const lowerText = trimmedText.toLowerCase();
 
-  // 1. Security Whitelist Check
+  // 1. Security Whitelist Check (Allow all if ALLOWED_WA_NUMBER is empty or '*')
   if (!isNumberAllowed(sender)) {
     console.warn(`[UNAUTHORIZED] Message rejected from: ${sender}`);
     return 'Maaf, nomor Anda tidak terdaftar sebagai pemilik bot ini.';
