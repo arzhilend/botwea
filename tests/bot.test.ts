@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { processIncomingMessage, normalizePhoneNumber, isNumberAllowed } from '../src/bot.js';
+import { processIncomingMessage, normalizePhoneNumber, MESSAGES } from '../src/bot.js';
+import { config } from '../src/config.js';
 import * as db from '../src/db.js';
 import { Task, ChatSession } from '../src/types.js';
 
@@ -13,6 +14,7 @@ describe('bot state machine', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    config.allowedWaNumber = sender; // Match test sender
     vi.spyOn(db, 'resetSession').mockResolvedValue();
     vi.spyOn(db, 'upsertSession').mockResolvedValue();
   });
