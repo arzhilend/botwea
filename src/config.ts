@@ -3,12 +3,27 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const config = {
-  port: process.env.PORT || '3000',
-  supabaseUrl: process.env.SUPABASE_URL || '',
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  fonnteToken: process.env.FONNTE_TOKEN || '',
-  allowedWaNumber: process.env.ALLOWED_WA_NUMBER || '',
-  webhookSecret: process.env.WEBHOOK_SECRET || '',
+  get port() {
+    return process.env.PORT || '3000';
+  },
+  get supabaseUrl() {
+    return process.env.SUPABASE_URL || '';
+  },
+  get supabaseServiceRoleKey() {
+    return process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  },
+  get fonnteToken() {
+    return process.env.FONNTE_TOKEN || '';
+  },
+  get allowedWaNumber() {
+    return process.env.ALLOWED_WA_NUMBER || '';
+  },
+  set allowedWaNumber(val: string) {
+    process.env.ALLOWED_WA_NUMBER = val;
+  },
+  get webhookSecret() {
+    return process.env.WEBHOOK_SECRET || '';
+  },
 };
 
 export function validateConfig(): void {
