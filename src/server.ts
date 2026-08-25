@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { config, validateConfig } from './config.js';
 import { processIncomingMessage } from './bot.js';
+import { runReminderJob } from './scheduler.js';
 
 validateConfig();
 
@@ -23,6 +24,17 @@ app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
 
 app.get(['/', '/health', '/api/health'], (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Endpoint trigger for daily reminder execution (e.g. from cron-job.org)
+app.get(['/api/reminder', '/reminder'], async (_req: Request, res: Response) => {
+  try {
+    const result = await runReminderJob();
+    res.json({ status: true, message: 'Reminder job executed successfully', data: result });
+  } catch (error: any) {
+    console.error('[REMINDER JOB ERROR]', error);
+    res.status(500).json({ status: false, error: error.message || 'Internal error' });
+  }
 });
 
 async function handleWebhookRequest(req: Request, res: Response): Promise<void> {
