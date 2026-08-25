@@ -1,20 +1,40 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { config, validateConfig } from './config.js';
 import { processIncomingMessage } from './bot.js';
 
 validateConfig();
 
 const app = express();
+
+// Body parsers for JSON and URL-encoded form data (Fonnte webhook format)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.text());
 
-app.get('/health', (_req: Request, res: Response) => {
+// Global error handler for body parser
+app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  if (err) {
+    console.error('[BODY PARSER ERROR]', err.message);
+    res.status(200).json({ status: false, error: 'Invalid payload format' });
+    return;
+  }
+  next();
+});
+
+app.get(['/', '/health', '/api/health'], (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.post('/webhook', async (req: Request, res: Response): Promise<void> => {
+async function handleWebhookRequest(req: Request, res: Response): Promise<void> {
   try {
-    const payload = req.body || {};
+    let payload = req.body || {};
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        payload = {};
+      }
+    }
 
     // 1. Verify Secret Token (if configured)
     if (config.webhookSecret) {
@@ -26,30 +46,34 @@ app.post('/webhook', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // 2. Extract Sender & Message content
-    const sender = payload.sender || payload.from || '';
-    const message = payload.message || payload.text || '';
+    // 2. Extract Sender & Message content (supports various Fonnte keys)
+    const sender = payload.sender || payload.from || payload.target || '';
+    const message = payload.message || payload.text || payload.body || '';
 
     if (!sender || !message) {
-      res.status(400).json({ status: false, error: 'Invalid payload: missing sender or message' });
+      console.warn('[WEBHOOK WARNING] Missing sender or message in payload:', payload);
+      res.status(200).json({ status: false, error: 'Missing sender or message' });
       return;
     }
 
-    console.log(`[INCOMING] From: ${sender} | Message: "${message.replace(/\n/g, ' ')}"`);
+    console.log(`[INCOMING WEBHOOK] From: ${sender} | Message: "${message.replace(/\n/g, ' ')}"`);
 
     // 3. Process Message via Bot State Machine
     const replyText = await processIncomingMessage(sender, message);
 
-    res.json({ status: true, message: 'Processed', reply: replyText });
+    res.status(200).json({ status: true, message: 'Processed', reply: replyText });
   } catch (error: any) {
     console.error('[WEBHOOK ERROR]', error);
     res.status(500).json({ status: false, error: 'Internal Server Error' });
   }
-});
+}
+
+// Support all possible routes on Vercel
+app.post(['/', '/webhook', '/api', '/api/webhook'], handleWebhookRequest);
 
 const PORT = parseInt(config.port, 10) || 3000;
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`[SERVER] Bot Webhook Receiver running on port ${PORT}`);
   });
